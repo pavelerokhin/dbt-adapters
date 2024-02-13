@@ -58,7 +58,10 @@
             *,
             {{ strategy.unique_key }} as dbt_unique_key,
             {{ strategy.updated_at }} as dbt_updated_at,
-            {{ strategy.updated_at }} as dbt_valid_from,
+            CASE
+                WHEN {{ strategy.created_at }} <> {{ strategy.updated_at }} AND (SELECT COUNT(*) FROM snapshotted_data LIMIT 1) = 0 THEN {{ strategy.created_at }}
+                ELSE {{ strategy.updated_at }}
+            END as dbt_valid_from,
             nullif({{ strategy.updated_at }}, {{ strategy.updated_at }}) as dbt_valid_to,
             {{ strategy.scd_id }} as dbt_scd_id
 
