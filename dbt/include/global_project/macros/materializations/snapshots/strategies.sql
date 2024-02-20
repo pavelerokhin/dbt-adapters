@@ -52,6 +52,7 @@
 {% macro snapshot_timestamp_strategy(node, snapshotted_rel, current_rel, config, target_exists) %}
     {% set primary_key = config['unique_key'] %}
     {% set updated_at = config['updated_at'] %}
+    {% set created_at = config['created_at'] %}
     {% set invalidate_hard_deletes = config.get('invalidate_hard_deletes', false) %}
 
     {#/*
@@ -72,6 +73,7 @@
     {% do return({
         "unique_key": primary_key,
         "updated_at": updated_at,
+        "created_at": created_at,
         "row_changed": row_changed_expr,
         "scd_id": scd_id_expr,
         "invalidate_hard_deletes": invalidate_hard_deletes

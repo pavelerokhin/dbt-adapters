@@ -58,7 +58,6 @@
             *,
             {{ strategy.unique_key }} as dbt_unique_key,
             {{ strategy.updated_at }} as dbt_updated_at,
-            {{ strategy.updated_at }} as dbt_valid_from,
             nullif({{ strategy.updated_at }}, {{ strategy.updated_at }}) as dbt_valid_to,
             {{ strategy.scd_id }} as dbt_scd_id
 
@@ -71,7 +70,6 @@
             *,
             {{ strategy.unique_key }} as dbt_unique_key,
             {{ strategy.updated_at }} as dbt_updated_at,
-            {{ strategy.updated_at }} as dbt_valid_from,
             {{ strategy.updated_at }} as dbt_valid_to
 
         from snapshot_query
@@ -92,18 +90,26 @@
 
         select
             'insert' as dbt_change_type,
-            source_data.*
-
+            source_data.*,
+            {% if strategy.created_at %}
+                source_data.{{ strategy.created_at }} as dbt_valid_from
+            {% else %}
+                source_data.{{ strategy.updated_at }} as dbt_valid_from
+            {% endif %}
         from insertions_source_data as source_data
         left outer join snapshotted_data on snapshotted_data.dbt_unique_key = source_data.dbt_unique_key
         where snapshotted_data.dbt_unique_key is null
-           or (
-                snapshotted_data.dbt_unique_key is not null
-            and (
-                {{ strategy.row_changed }}
-            )
-        )
 
+        union all
+
+        select
+            'insert' as dbt_change_type,
+            source_data.*,
+            source_data.{{ strategy.updated_at }} as dbt_valid_from
+        from insertions_source_data as source_data
+        left outer join snapshotted_data on snapshotted_data.dbt_unique_key = source_data.dbt_unique_key
+        where snapshotted_data.dbt_unique_key is not null
+            and ({{ strategy.row_changed }})
     ),
 
     updates as (
@@ -111,8 +117,8 @@
         select
             'update' as dbt_change_type,
             source_data.*,
-            snapshotted_data.dbt_scd_id
-
+            snapshotted_data.dbt_scd_id,
+            source_data.{{ strategy.updated_at }} as dbt_valid_from
         from updates_source_data as source_data
         join snapshotted_data on snapshotted_data.dbt_unique_key = source_data.dbt_unique_key
         where (
